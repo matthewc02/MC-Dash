@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  background: #05070c;
+}
+
+body {
+  min-height: 100vh;
+  color: #e8eef7;
+  font-feature-settings: "ss01";
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(18, 24, 38, 0.72), rgba(10, 14, 22, 0.78));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 1px rgba(62, 224, 198, 0.04), 0 24px 80px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(16px);
+}
+
+.scanlines {
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 255, 255, 0.012) 4px
+  );
+}
+
+.vignette {
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+.panel-title {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: rgba(232, 238, 247, 0.55);
+  font-weight: 600;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.orbit {
+  animation: orbit 90s linear infinite;
+}
+
+@keyframes nodeFloat {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50% { transform: translate(-50%, -50%) translateY(-5px); }
+}
+
+@keyframes ringAwait {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes ringBreathe {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.015); }
+}
+
+.ring-node {
+  transform: translate(-50%, -50%);
+  animation: nodeFloat 7s ease-in-out infinite;
+}
+
+.ring-await {
+  animation: ringAwait 3.6s ease-in-out infinite;
+}
+
+.ring-breathe {
+  animation: ringBreathe 8s ease-in-out infinite;
+}
