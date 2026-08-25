@@ -1,9 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { TZ } from "@/lib/constants";
+import { explainFetchError } from "@/lib/browserFetch";
 
-export const dynamic = "force-dynamic";
-
-type CalEvent = {
+export type CalEvent = {
   summary: string;
   start: string | null;
   end: string | null;
@@ -59,27 +57,33 @@ function parseIcs(ics: string): CalEvent[] {
   return events;
 }
 
-export async function GET(req: NextRequest) {
-  const url = req.nextUrl.searchParams.get("url");
+export async function fetchCalendar(url: string) {
   if (!url) {
-    return NextResponse.json({
-      events: [],
+    return {
+      events: [] as CalEvent[],
       fetchedAt: new Date().toISOString(),
       empty: true,
       message: "No ICS feed configured. Paste a public ICS URL to load today’s agenda.",
-    });
+    };
   }
   try {
     const parsed = new URL(url);
     if (!["http:", "https:"].includes(parsed.protocol)) {
-      return NextResponse.json({ error: "ICS URL must be http(s)" }, { status: 400 });
+      return {
+        events: [] as CalEvent[],
+        fetchedAt: new Date().toISOString(),
+        empty: true,
+        error: "ICS URL must be http(s)",
+      };
     }
-    const res = await fetch(url, {
-      cache: "no-store",
-      headers: { "User-Agent": "MatthewsGlobalDashboard/1.0", Accept: "text/calendar, text/plain, */*" },
-    });
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
-      return NextResponse.json({ error: `ICS fetch HTTP ${res.status}`, events: [], fetchedAt: new Date().toISOString() }, { status: 502 });
+      return {
+        error: `ICS fetch HTTP ${res.status}`,
+        events: [] as CalEvent[],
+        fetchedAt: new Date().toISOString(),
+        empty: true,
+      };
     }
     const ics = await res.text();
     const today = pacificYmd(new Date());
@@ -87,11 +91,13 @@ export async function GET(req: NextRequest) {
       if (!ev.start) return false;
       return pacificYmd(new Date(ev.start)) === today;
     });
-    return NextResponse.json({ events, fetchedAt: new Date().toISOString(), empty: events.length === 0, icsUrl: url });
+    return { events, fetchedAt: new Date().toISOString(), empty: events.length === 0, icsUrl: url };
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "ICS failed", events: [], fetchedAt: new Date().toISOString() },
-      { status: 502 },
-    );
+    return {
+      error: explainFetchError(e, "ICS"),
+      events: [] as CalEvent[],
+      fetchedAt: new Date().toISOString(),
+      empty: true,
+    };
   }
 }

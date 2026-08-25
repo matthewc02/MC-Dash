@@ -1,9 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cached } from "@/lib/cache";
 import { DEFAULT_WATCHLIST } from "@/lib/constants";
 import { Quote } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
+import { explainFetchError } from "@/lib/browserFetch";
 
 const STOOQ: Record<string, string> = {
   AAPL: "aapl.us",
@@ -20,13 +17,7 @@ const STOOQ: Record<string, string> = {
 
 async function yahoo(symbol: string): Promise<Quote> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
-  const res = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      "User-Agent": "Mozilla/5.0 MatthewsGlobalDashboard/1.0",
-      Accept: "application/json",
-    },
-  });
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`yahoo ${res.status}`);
   const j = await res.json();
   const result = j.chart?.result?.[0];
@@ -52,7 +43,7 @@ async function yahoo(symbol: string): Promise<Quote> {
 async function stooq(symbol: string): Promise<Quote> {
   const s = STOOQ[symbol] ?? `${symbol.replace("^", "").toLowerCase()}.us`;
   const url = `https://stooq.com/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
-  const res = await fetch(url, { cache: "no-store", headers: { "User-Agent": "MatthewsGlobalDashboard/1.0" } });
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`stooq ${res.status}`);
   const text = await res.text();
   const line = text.trim().split("\n")[1];
@@ -88,26 +79,32 @@ async function one(symbol: string): Promise<Quote> {
         currency: "USD",
         spark: [],
         ok: false,
-        error: e instanceof Error ? e.message : "quote failed",
+        error: explainFetchError(e, `Quote ${symbol}`),
       };
     }
   }
 }
 
-export async function GET(req: NextRequest) {
-  const symbolsParam = req.nextUrl.searchParams.get("symbols");
-  const symbols = (symbolsParam ? symbolsParam.split(",") : [...DEFAULT_WATCHLIST])
+export async function fetchQuotes(symbolsInput?: string[]) {
+  const symbols = (symbolsInput && symbolsInput.length ? symbolsInput : [...DEFAULT_WATCHLIST])
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean)
     .slice(0, 16);
-  const key = `quotes:${symbols.join(",")}`;
   try {
-    const quotes = await cached(key, 20 * 1000, () => Promise.all(symbols.map(one)));
-    return NextResponse.json({ quotes, fetchedAt: new Date().toISOString() });
+    const quotes = await Promise.all(symbols.map(one));
+    const allFailed = quotes.length > 0 && quotes.every((q) => !q.ok);
+    return {
+      quotes,
+      fetchedAt: new Date().toISOString(),
+      error: allFailed
+        ? "Quotes blocked by browser CORS (Yahoo/Stooq are not CORS-open; GitHub Pages has no API proxy)."
+        : null as string | null,
+    };
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "quotes failed", fetchedAt: new Date().toISOString() },
-      { status: 502 },
-    );
+    return {
+      quotes: [] as Quote[],
+      fetchedAt: new Date().toISOString(),
+      error: explainFetchError(e, "Quotes"),
+    };
   }
 }

@@ -1,9 +1,6 @@
-import { NextResponse } from "next/server";
-import { cached } from "@/lib/cache";
 import { fetchText, parseFeed } from "@/lib/rss";
 import { NewsItem } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
+import { explainFetchError } from "@/lib/browserFetch";
 
 const FEEDS: { source: string; urls: string[] }[] = [
   { source: "Reuters", urls: ["https://news.google.com/rss/search?q=site:reuters.com&hl=en-CA&gl=CA&ceid=CA:en"] },
@@ -25,26 +22,33 @@ async function loadSource(source: string, urls: string[]) {
       if (items.length) return { source, items, error: null as string | null };
       errors.push(`${url} → empty feed`);
     } catch (e) {
-      errors.push(`${url} → ${e instanceof Error ? e.message : "fail"}`);
+      errors.push(`${url} → ${explainFetchError(e, source)}`);
     }
   }
   return { source, items: [] as NewsItem[], error: errors.join("; ") || "unavailable" };
 }
 
-export async function GET() {
+export async function fetchNews() {
   try {
-    const payload = await cached("news:world:v2", 2 * 60 * 1000, async () => {
-      const sources = await Promise.all(FEEDS.map((f) => loadSource(f.source, f.urls)));
-      const items = sources
-        .flatMap((s) => s.items)
-        .sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
-      return { sources, items, fetchedAt: new Date().toISOString() };
-    });
-    return NextResponse.json(payload);
+    const sources = await Promise.all(FEEDS.map((f) => loadSource(f.source, f.urls)));
+    const items = sources
+      .flatMap((s) => s.items)
+      .sort((a, b) => (b.publishedAt || "").localeCompare(a.publishedAt || ""));
+    const failed = sources.every((s) => !s.items.length);
+    return {
+      sources,
+      items,
+      fetchedAt: new Date().toISOString(),
+      error: failed
+        ? "News RSS blocked by browser CORS (GitHub Pages has no API proxy)."
+        : null as string | null,
+    };
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "news failed", fetchedAt: new Date().toISOString() },
-      { status: 502 },
-    );
+    return {
+      sources: [],
+      items: [] as NewsItem[],
+      fetchedAt: new Date().toISOString(),
+      error: explainFetchError(e, "News"),
+    };
   }
 }

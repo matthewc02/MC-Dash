@@ -2,6 +2,7 @@
 
 import { useArtifacts } from "@/context/ArtifactContext";
 import { REFRESH_MS, STORAGE, TZ } from "@/lib/constants";
+import { fetchCalendar } from "@/lib/calendar";
 import { formatTime } from "@/lib/format";
 import { useInterval } from "@/hooks/useInterval";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -22,10 +23,7 @@ export default function CalendarPanel() {
   useEffect(() => setDraft(ics), [ics]);
 
   const load = useCallback(async () => {
-    const url = ics.trim();
-    const q = url ? `/api/calendar?url=${encodeURIComponent(url)}` : "/api/calendar";
-    const res = await fetch(q, { cache: "no-store" });
-    const j = await res.json();
+    const j = await fetchCalendar(ics.trim());
     setEvents(j.events ?? []);
     setFetchedAt(j.fetchedAt ?? new Date().toISOString());
     if (j.message) setMessage(j.message);

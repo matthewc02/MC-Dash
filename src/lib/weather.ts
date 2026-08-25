@@ -1,9 +1,6 @@
-import { NextResponse } from "next/server";
-import { cached } from "@/lib/cache";
 import { HOME_WEATHER, WHISTLER_WEATHER, TZ } from "@/lib/constants";
 import { WeatherBundle } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
+import { explainFetchError } from "@/lib/browserFetch";
 
 const CURRENT =
   "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,pressure_msl,uv_index,weather_code";
@@ -63,20 +60,19 @@ async function loadPlace(place: { id: string; name: string; lat: number; lon: nu
   };
 }
 
-export async function GET() {
+export async function fetchWeather() {
   try {
-    const payload = await cached("weather:both", 5 * 60 * 1000, async () => {
-      const [vancouver, whistler] = await Promise.all([
-        loadPlace(HOME_WEATHER),
-        loadPlace(WHISTLER_WEATHER),
-      ]);
-      return { vancouver, whistler, fetchedAt: new Date().toISOString() };
-    });
-    return NextResponse.json(payload);
+    const [vancouver, whistler] = await Promise.all([
+      loadPlace(HOME_WEATHER),
+      loadPlace(WHISTLER_WEATHER),
+    ]);
+    return { vancouver, whistler, fetchedAt: new Date().toISOString(), error: null as string | null };
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "weather failed", fetchedAt: new Date().toISOString() },
-      { status: 502 },
-    );
+    return {
+      vancouver: null,
+      whistler: null,
+      fetchedAt: new Date().toISOString(),
+      error: explainFetchError(e, "Weather"),
+    };
   }
 }

@@ -7,3 +7,4 @@ out
 *.png
 *.tgz
 tsconfig.tsbuildinfo
+.vercel

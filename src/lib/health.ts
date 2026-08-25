@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
+import { HealthSample } from "@/lib/types";
+import { explainFetchError } from "@/lib/browserFetch";
 
 const TARGET = "https://www.dmca.com";
 
@@ -9,9 +8,10 @@ function extractTitle(html: string) {
   return m ? m[1].replace(/\s+/g, " ").trim().slice(0, 160) : null;
 }
 
-export async function GET() {
+export async function probeDmca(): Promise<HealthSample & { note?: string; bytes?: number }> {
   const started = Date.now();
   let ttfbMs: number | null = null;
+  const note = "Live probe of this session only. No historical uptime percentage is computed or displayed.";
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 12000);
@@ -20,17 +20,13 @@ export async function GET() {
       cache: "no-store",
       redirect: "follow",
       signal: ctrl.signal,
-      headers: {
-        "User-Agent": "MatthewsGlobalDashboard/1.0 site-monitor",
-        Accept: "text/html,application/xhtml+xml",
-      },
     });
     ttfbMs = Date.now() - started;
     const buf = await res.arrayBuffer();
     clearTimeout(timer);
     const totalMs = Date.now() - started;
     const html = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 80_000));
-    return NextResponse.json({
+    return {
       url: TARGET,
       ok: res.ok,
       status: res.status,
@@ -40,10 +36,10 @@ export async function GET() {
       title: extractTitle(html),
       error: res.ok ? null : `HTTP ${res.status}`,
       checkedAt: new Date().toISOString(),
-      note: "Live probe of this session only. No historical uptime percentage is computed or displayed.",
-    });
+      note,
+    };
   } catch (e) {
-    return NextResponse.json({
+    return {
       url: TARGET,
       ok: false,
       status: null,
@@ -51,9 +47,9 @@ export async function GET() {
       totalMs: Date.now() - started,
       bytes: 0,
       title: null,
-      error: e instanceof Error ? e.message : "request failed",
+      error: explainFetchError(e, "dmca.com probe"),
       checkedAt: new Date().toISOString(),
-      note: "Live probe of this session only. No historical uptime percentage is computed or displayed.",
-    });
+      note,
+    };
   }
 }

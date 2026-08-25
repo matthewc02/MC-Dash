@@ -2,6 +2,7 @@
 
 import { useArtifacts } from "@/context/ArtifactContext";
 import { DEFAULT_WATCHLIST, REFRESH_MS, STORAGE } from "@/lib/constants";
+import { fetchQuotes } from "@/lib/quotes";
 import { Quote } from "@/lib/types";
 import { useInterval } from "@/hooks/useInterval";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -18,11 +19,11 @@ export default function StocksPanel() {
   const seeded = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(watchlist.join(","))}`, { cache: "no-store" });
-    const j = await res.json();
+    const j = await fetchQuotes(watchlist);
     setFetchedAt(j.fetchedAt ?? new Date().toISOString());
-    if (!res.ok) {
-      setError(j.error || "Quotes failed");
+    if (j.error) {
+      setError(j.error);
+      setQuotes(j.quotes ?? []);
       return;
     }
     setQuotes(j.quotes ?? []);

@@ -3,6 +3,7 @@
 import { useArtifacts } from "@/context/ArtifactContext";
 import { REFRESH_MS } from "@/lib/constants";
 import { wallClock, weatherLabel, windDir } from "@/lib/format";
+import { fetchWeather } from "@/lib/weather";
 import { WeatherBundle } from "@/lib/types";
 import { useInterval } from "@/hooks/useInterval";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -66,10 +67,9 @@ export default function WeatherPanel() {
   const seeded = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/weather", { cache: "no-store" });
-    const j = await res.json();
+    const j = await fetchWeather();
     setFetchedAt(j.fetchedAt ?? new Date().toISOString());
-    if (!res.ok) {
+    if (j.error || !j.vancouver) {
       setError(j.error || "Weather failed");
       return;
     }

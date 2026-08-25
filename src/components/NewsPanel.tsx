@@ -3,6 +3,7 @@
 import { useArtifacts } from "@/context/ArtifactContext";
 import { REFRESH_MS } from "@/lib/constants";
 import { relativeFrom } from "@/lib/format";
+import { fetchNews } from "@/lib/news";
 import { NewsItem } from "@/lib/types";
 import { useInterval } from "@/hooks/useInterval";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,10 +17,10 @@ export default function NewsPanel() {
   const seeded = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/news", { cache: "no-store" });
-    const j = await res.json();
-    if (!res.ok) {
-      setError(j.error || "News feed failed");
+    const j = await fetchNews();
+    if (j.error) {
+      setError(j.error);
+      setItems(j.items ?? []);
       setFetchedAt(j.fetchedAt ?? new Date().toISOString());
       return;
     }

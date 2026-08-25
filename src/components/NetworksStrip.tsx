@@ -3,6 +3,7 @@
 import { useArtifacts } from "@/context/ArtifactContext";
 import { REFRESH_MS } from "@/lib/constants";
 import { relativeFrom } from "@/lib/format";
+import { fetchNetworks } from "@/lib/networks";
 import { useInterval } from "@/hooks/useInterval";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Panel } from "./ui";
@@ -25,8 +26,7 @@ export default function NetworksStrip() {
   const seeded = useRef(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/networks", { cache: "no-store" });
-    const j = await res.json();
+    const j = await fetchNetworks();
     setNetworks(j.networks ?? []);
     setFetchedAt(j.fetchedAt);
     if (!seeded.current && j.networks?.[0]?.headline) {

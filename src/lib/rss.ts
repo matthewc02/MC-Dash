@@ -65,10 +65,6 @@ export async function fetchText(url: string, timeoutMs = 10000) {
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: {
-        "User-Agent": "MatthewsGlobalDashboard/1.0 (+local command center)",
-        Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5",
-      },
       cache: "no-store",
     });
     const text = await res.text();

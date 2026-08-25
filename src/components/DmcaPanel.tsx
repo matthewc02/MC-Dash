@@ -3,6 +3,7 @@
 import { useArtifacts } from "@/context/ArtifactContext";
 import { REFRESH_MS } from "@/lib/constants";
 import { formatTime } from "@/lib/format";
+import { probeDmca } from "@/lib/health";
 import { HealthSample } from "@/lib/types";
 import { useInterval } from "@/hooks/useInterval";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,8 +17,7 @@ export default function DmcaPanel() {
   const lastStatus = useRef<number | null>(null);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/health", { cache: "no-store" });
-    const j = (await res.json()) as HealthSample & { note?: string };
+    const j = await probeDmca();
     setSample(j);
     setError(j.error);
     const ms = j.ttfbMs ?? j.totalMs;
